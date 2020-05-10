@@ -26,7 +26,16 @@ const prisma = new Prisma({
 
 // 1. create a new post
 // 2. Fetch all of the info about the user(author)
+
 const createPostForUser = async (authorId, data) => {
+  const userExists = await prisma.exists.User({
+    id: authorId,
+  });
+
+  if (!userExists) {
+    throw new Error('User not found');
+  }
+
   const post = await prisma.mutation.createPost(
     {
       data: {
@@ -38,17 +47,9 @@ const createPostForUser = async (authorId, data) => {
         },
       },
     },
-    '{ id }'
+    '{ author { id name email posts { id title published } } }'
   );
-  const user = await prisma.query.user(
-    {
-      where: {
-        id: authorId,
-      },
-    },
-    ' { id name email posts { id title published } } '
-  );
-  return user;
+  return post.author;
 };
 
 // Usage example -- create a post for Vikram and print info of him
@@ -56,9 +57,19 @@ const createPostForUser = async (authorId, data) => {
 //   title: 'great books to read',
 //   body: 'the war of art',
 //   published: true,
-// }).then((data) => console.log(JSON.stringify(data, undefined, 4)));
+// })
+//   .then((data) => console.log(JSON.stringify(data, undefined, 4)))
+//   .catch((error) => console.log(error.message));
 
 const updatePostForUser = async (postId, data) => {
+  const postExists = await prisma.exists.Post({
+    id: postId,
+  });
+
+  if (!postExists) {
+    throw new Error('Post does not exist!');
+  }
+
   const post = await prisma.mutation.updatePost(
     {
       data,
@@ -66,19 +77,13 @@ const updatePostForUser = async (postId, data) => {
         id: postId,
       },
     },
-    ' { author { id } }'
+    ' { author { name id email posts { id title published } } }'
   );
-  const user = await prisma.query.user(
-    {
-      where: {
-        id: post.author.id,
-      },
-    },
-    ' { name id email posts { id title published } } '
-  );
-  return user;
+  return post.author;
 };
 
-updatePostForUser('cka0jtaos05d107140p6ah7n4', {
+updatePostForUser('123456', {
   title: 'MUST READ books that will change your life',
-}).then((user) => console.log(JSON.stringify(user, undefined, 4)));
+})
+  .then((user) => console.log(JSON.stringify(user, undefined, 4)))
+  .catch((error) => console.log(error.message));
